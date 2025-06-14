@@ -1,7 +1,7 @@
 import logging
 
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.INFO)
 
 def notify(message):
     # 未来可以扩展为邮件、钉钉、Slack 通知等
-    logging.error(f"[报警] {message}")
+    logging.info(f"[报警] {message}")
