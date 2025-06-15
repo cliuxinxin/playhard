@@ -45,16 +45,7 @@ if __name__ == "__main__":
     for i, event in enumerate(parsed_events):
         print(f"[{i}] url: {event.get('url')} | title: {event.get('title')} | start_time: {event.get('start_time')} | venue: {event.get('venue')}")
 
-    # 落库前做字段过滤
-    ORM_FIELDS = [
-        "title", "city", "venue", "address", "start_time", "end_time", "age_range",
-        "tags", "url", "is_free", "requires_registration", "source", "last_updated"
-    ]
-    def filter_event_fields(event):
-        return {k: event.get(k) for k in ORM_FIELDS}
-    filtered_events = [filter_event_fields(e) for e in parsed_events]
-
     # 落库
-    save_activities_to_db(filtered_events)
+    strategy.save_to_db(parsed_events)
     print("已成功落库！")
     notify(f"抓取完成，共 {len(valid_results)} 页，解析出 {len(parsed_events)} 条事件。")

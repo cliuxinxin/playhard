@@ -1,4 +1,23 @@
+from db_handler import save_activities_to_db
+
 class BibliocommonsFetchStrategy:
+    # 字段映射关系：ORM字段 -> (原始字段, 清洗函数/默认值)
+    FIELD_MAPPING = {
+        "title":        ("title", lambda v: v.strip() if v else "无标题"),
+        "city":         (None, lambda v, raw=None: "San Jose"),  # 固定值
+        "venue":        ("branchLocationId", None),    # 直接映射
+        "address":      (None, lambda v, raw=None: None),        # 没有就None
+        "start_time":   ("start", None),
+        "end_time":     ("end", None),
+        "age_range":    (None, lambda v, raw=None: None),
+        "tags":         (None, lambda v, raw=None: []),
+        "url":          (None, lambda v, raw: f"https://sjpl.bibliocommons.com/events/{raw.get('id')}") ,
+        "is_free":      (None, lambda v, raw=None: True),
+        "requires_registration": (None, lambda v, raw=None: False),
+        "source":       (None, lambda v, raw=None: "sjpl.org"),
+        "last_updated": (None, lambda v, raw=None: None),
+    }
+
     def __init__(self):
         self.url = 'https://gateway.bibliocommons.com/v2/libraries/sjpl/events/search'
         self.headers = {
@@ -51,21 +70,24 @@ class BibliocommonsFetchStrategy:
                 event_details = page_data["entities"]["events"].get(event_id)
                 if event_details:
                     definition = event_details.get("definition", {})
-                    # 只保留ORM需要的字段，并生成url和source
-                    extracted_event = {
-                        "title": definition.get("title"),
-                        "city": None,  # 可根据需要补充
-                        "venue": definition.get("branchLocationId"),  # 临时用branchLocationId做venue
-                        "address": None,  # 可根据需要补充
-                        "start_time": definition.get("start"),
-                        "end_time": definition.get("end"),
-                        "age_range": None,  # 可根据需要补充
-                        "tags": [],  # 可根据需要补充
-                        "url": f"https://sjpl.bibliocommons.com/events/{event_details.get('id')}",
-                        "is_free": True,  # 默认免费
-                        "requires_registration": False,  # 默认不需要注册
-                        "source": "sjpl.org",
-                        "last_updated": None,  # 可根据需要补充
-                    }
-                    results.append(extracted_event)
+                    # 组装原始event字典，便于字段映射
+                    raw_event = {**definition, **event_details}
+                    results.append(raw_event)
         return results
+
+    def map_and_clean_event(self, raw_event):
+        mapped = {}
+        for orm_field, (raw_field, func) in self.FIELD_MAPPING.items():
+            if func:
+                try:
+                    value = func(raw_event.get(raw_field) if raw_field else None, raw_event)
+                except TypeError:
+                    value = func(raw_event.get(raw_field) if raw_field else None)
+            else:
+                value = raw_event.get(raw_field) if raw_field else None
+            mapped[orm_field] = value
+        return mapped
+
+    def save_to_db(self, events):
+        filtered_events = [self.map_and_clean_event(e) for e in events]
+        save_activities_to_db(filtered_events)
