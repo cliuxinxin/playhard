@@ -23,9 +23,56 @@ class BibliocommonsFetchStrategy:
             'EVENT': 'app04b',
         }
 
-    def build_params(self, page, limit=2):
+    def build_params(self, page, limit=20):
         return {
             'page': page,
             'limit': limit,
             'locale': 'en-US',
         }
+
+    def parse_page(self, page_data):
+        """
+        解析单页原始数据，提取事件信息。
+        Args:
+            page_data (dict): 原始API返回数据。
+        Returns:
+            list: 解析后的事件列表。
+        """
+        results = []
+        if not page_data or "events" not in page_data:
+            return results
+        events_info = page_data["events"]
+        if (
+            "results" in events_info
+            and "entities" in page_data
+            and "events" in page_data["entities"]
+        ):
+            for event_id in events_info["results"]:
+                event_details = page_data["entities"]["events"].get(event_id)
+                if event_details:
+                    extracted_event = {
+                        "id": event_details.get("id"),
+                        "key": event_details.get("key"),
+                        "seriesId": event_details.get("seriesId"),
+                        "title": event_details["definition"].get("title"),
+                        "description": event_details["definition"].get("description"),
+                        "start_time": event_details["definition"].get("start"),
+                        "end_time": event_details["definition"].get("end"),
+                        "branchLocationId": event_details["definition"].get("branchLocationId"),
+                        "locationDetails": event_details["definition"].get("locationDetails"),
+                        "audienceIds": event_details["definition"].get("audienceIds", []),
+                        "languageIds": event_details["definition"].get("languageIds", []),
+                        "programId": event_details["definition"].get("programId"),
+                        "typeIds": event_details["definition"].get("typeIds", []),
+                        "isVirtual": event_details["definition"].get("isVirtual", False),
+                        "isCancelled": event_details["definition"].get("isCancelled", False),
+                        "contact_name": event_details["definition"].get("contact", {}).get("name"),
+                        "contact_email": event_details["definition"].get("contact", {}).get("email", {}).get("value"),
+                        "contact_phone": event_details["definition"].get("contact", {}).get("phone", {}).get("value"),
+                        "isFull": event_details.get("isFull", False),
+                        "registrationClosed": event_details.get("registrationClosed", False),
+                        "numberRegistered": event_details.get("numberRegistered"),
+                        "numberWaitlistRegistered": event_details.get("numberWaitlistRegistered"),
+                    }
+                    results.append(extracted_event)
+        return results
