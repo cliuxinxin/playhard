@@ -50,29 +50,22 @@ class BibliocommonsFetchStrategy:
             for event_id in events_info["results"]:
                 event_details = page_data["entities"]["events"].get(event_id)
                 if event_details:
+                    definition = event_details.get("definition", {})
+                    # 只保留ORM需要的字段，并生成url和source
                     extracted_event = {
-                        "id": event_details.get("id"),
-                        "key": event_details.get("key"),
-                        "seriesId": event_details.get("seriesId"),
-                        "title": event_details["definition"].get("title"),
-                        "description": event_details["definition"].get("description"),
-                        "start_time": event_details["definition"].get("start"),
-                        "end_time": event_details["definition"].get("end"),
-                        "branchLocationId": event_details["definition"].get("branchLocationId"),
-                        "locationDetails": event_details["definition"].get("locationDetails"),
-                        "audienceIds": event_details["definition"].get("audienceIds", []),
-                        "languageIds": event_details["definition"].get("languageIds", []),
-                        "programId": event_details["definition"].get("programId"),
-                        "typeIds": event_details["definition"].get("typeIds", []),
-                        "isVirtual": event_details["definition"].get("isVirtual", False),
-                        "isCancelled": event_details["definition"].get("isCancelled", False),
-                        "contact_name": event_details["definition"].get("contact", {}).get("name"),
-                        "contact_email": event_details["definition"].get("contact", {}).get("email", {}).get("value"),
-                        "contact_phone": event_details["definition"].get("contact", {}).get("phone", {}).get("value"),
-                        "isFull": event_details.get("isFull", False),
-                        "registrationClosed": event_details.get("registrationClosed", False),
-                        "numberRegistered": event_details.get("numberRegistered"),
-                        "numberWaitlistRegistered": event_details.get("numberWaitlistRegistered"),
+                        "title": definition.get("title"),
+                        "city": None,  # 可根据需要补充
+                        "venue": definition.get("branchLocationId"),  # 临时用branchLocationId做venue
+                        "address": None,  # 可根据需要补充
+                        "start_time": definition.get("start"),
+                        "end_time": definition.get("end"),
+                        "age_range": None,  # 可根据需要补充
+                        "tags": [],  # 可根据需要补充
+                        "url": f"https://sjpl.bibliocommons.com/events/{event_details.get('id')}",
+                        "is_free": True,  # 默认免费
+                        "requires_registration": False,  # 默认不需要注册
+                        "source": "sjpl.org",
+                        "last_updated": None,  # 可根据需要补充
                     }
                     results.append(extracted_event)
         return results
