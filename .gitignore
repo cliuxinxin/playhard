@@ -1,3 +1,9 @@
 *.pyc
+<<<<<<< HEAD
 scraper/events.db
 *.csv
+=======
+*.json
+activities.db
+*.html
+>>>>>>> a60a982 (增加细节下载)
