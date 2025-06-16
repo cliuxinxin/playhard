@@ -1,117 +1,135 @@
-# 项目架构
-playhard/
-├── README.md
-├── requirements.txt
-├── scrapy_projects/
-│   ├── sjpl_events/           # SJPL 爬虫项目
-│   │   ├── scrapy.cfg
-│   │   └── sjpl_events/
-│   │       ├── __init__.py
-│   │       ├── items.py
-│   │       ├── settings.py
-│   │       ├── parser/
-│   │       │   └── sjpl_parser.py
-│   │       └── spiders/
-│   │           └── sjpl_spider.py
-│   └── other_spider/          # 其他爬虫项目
-│       ├── scrapy.cfg
-│       └── other_spider/
-│           ├── __init__.py
-│           ├── items.py
-│           ├── settings.py
-│           └── spiders/
-│               └── other_spider.py
-├── data/
-│   ├── sjpl/                  # SJPL 数据目录
-│   │   └── output.json
-│   └── other/                 # 其他爬虫数据目录
-│       └── output.json
-├── scripts/
-│   ├── run_all.py            # 运行所有爬虫的脚本
-│   └── stats.py              # 数据统计脚本
-└── main.py                   # 启动程序
+# 架构
 
-# 模块说明
-🧩 各模块职责详解
+          +-----------------------------+
+          |      调度与监控中心         |
+          |   - cron/airflow/scrapyd    |
+          +-----------------------------+
+                      |
+         +------------+-------------+
+         |                          |
+  +------v------+          +--------v-------+
+  |  多站点配置  |          |  统一Spider入口 |
+  | (spider.yaml)|          | (dispatcher.py) |
+  +------+-------+          +--------+--------+
+         |                           |
+  +------v------+     +-------------v-----------+
+  | 各站点策略spider |--> 解析 + Item + 翻页策略 |
+  +-------------+     +-------------------------+
+                             |
+                     +-------v--------+
+                     |   ItemPipeline |
+                     | - 清洗         |
+                     | - 存库         |
+                     | - 去重         |
+                     +----------------+
 
-1. Scrapy 项目
-   - 每个爬虫项目独立配置
-   - 可以设置不同的爬取策略和参数
-   - 支持自定义中间件和管道
 
-2. 爬虫模块
-   - 实现数据抓取逻辑
-   - 处理分页和请求
-   - 调用解析器处理响应
-   - 输出结构化数据
 
-3. 解析模块
-   - 实现数据解析逻辑
-   - 将原始数据转换为结构化格式
-   - 提供数据清理和验证
+# 模块划分
 
-4. 数据模型
-   - 定义数据结构
-   - 确保数据一致性
-   - 提供数据验证
+1. spiders/：每个网站一个 spider
+命名规范如：sjpl_events.py, city_library.py, bayarea_kids.py
 
-# 运行方式
-🛠 运行步骤
+每个 spider 实现自己的：
 
-1. 运行单个爬虫
-```bash
-cd scrapy_projects/sjpl_events
-scrapy crawl sjpl -o ../../data/sjpl/output.json
-```
+起始请求
 
-2. 运行所有爬虫（使用脚本）
-```bash
-python scripts/run_all.py
-```
+翻页逻辑
 
-3. 查看数据统计
-```bash
-python scripts/stats.py
-```
+数据提取逻辑（XPath / CSS / JSON）
 
-# 数据统计
-📊 统计信息
+动态渲染机制（Playwright/Splash）
 
-1. 爬虫运行统计
-   - 运行时间
-   - 请求数量
-   - 成功/失败率
-   - 数据量统计
+python
+复制
+编辑
+class SJPLEventsSpider(SiteSpider):
+    name = 'sjpl_events'
+    custom_settings = {'USE_PLAYWRIGHT': False}  # 可选
 
-2. 数据质量统计
-   - 字段完整性
-   - 数据有效性
-   - 重复数据检测
+    def start_requests(self):
+        yield scrapy.Request(url=self.site_config['start_url'], callback=self.parse)
 
-# 注意事项
-⚠️ 重要提示
+    def parse(self, response):
+        # 数据提取
+        ...
+        # 翻页逻辑
+        ...
+2. site_config/：每个网站配置文件（推荐 YAML）
+便于非程序员维护，包含字段映射、翻页规则、起始链接、动态渲染设置等。
 
-1. 确保在正确的目录下运行命令
-2. 检查 scrapy.cfg 和 settings.py 配置是否正确
-3. 确保所有依赖模块都已正确安装
-4. 注意爬虫的请求频率和限制
-5. 定期检查数据质量和完整性
-6. 监控爬虫运行状态和错误日志
+yaml
+复制
+编辑
+sjpl_events:
+  start_url: https://sjpl.bibliocommons.com/v2/events
+  pagination: next_link
+  render: false
+  fields:
+    title: "//h1/text()"
+    location: "//div[@class='location']/text()"
+    ...
+3. middlewares/：下载中间件模块
+用于：
 
-# 爬虫管理
-🔧 管理功能
+Header/UA 随机切换
 
-1. 爬虫调度
-   - 支持定时运行
-   - 支持并发控制
-   - 支持失败重试
+代理池支持
 
-2. 数据管理
-   - 数据备份
-   - 历史记录
-   - 数据清理
+请求重试（对接第三方 API 限速）
 
-3. 监控告警
-   - 运行状态监控
-   - 错误告警
-   - 数据异常检测
+4. pipelines/：清洗 + 存储
+每一个 Item 进入 Pipeline：
+
+字段标准化（时间格式统一、空字段过滤、HTML 清洗）
+
+存入数据库（如 SQLite / MySQL / MongoDB）
+
+可加“站点来源标识”，方便归档
+
+可添加去重（基于 URL + 标题）
+
+python
+复制
+编辑
+class NormalizePipeline:
+    def process_item(self, item, spider):
+        item['start_time'] = parse_time(item['start_time'])
+        item['location'] = item['location'].strip()
+        return item
+5. items.py：统一数据结构
+python
+复制
+编辑
+class EventItem(scrapy.Item):
+    title = scrapy.Field()
+    location = scrapy.Field()
+    start_time = scrapy.Field()
+    category = scrapy.Field()
+    source = scrapy.Field()  # 来源站点标识
+6. utils/：工具类模块
+时间格式化
+
+清洗 HTML
+
+URL 去重/归一
+
+动态渲染支持（Playwright）
+
+# 日志
+每个任务自动输出：爬取数量、失败数量、重试次数、时长
+
+保留日志：方便复现与排查问题
+
+# 数据库
+本地调试阶段：sqlite
+
+# 目标
+新增站点：只需新增 spider + 配置文件
+
+系统自动调度、自动翻页、自动规整数据并存库
+
+支持失败报警、断点续爬、动态渲染、代理限速
+
+前后端解耦，具备“数据中台”能力
+
