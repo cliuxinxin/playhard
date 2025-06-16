@@ -3,7 +3,6 @@
 Activity = {
     "title": "Toddler Storytime",
     "description": "Learn about the world around you through interactive storytelling.",
-    "image_url": "    "description": "Learn about the world around you through interactive storytelling.",
     "image_url": "URL_ADDRESS",
     "city": "Cupertino",
     "venue": "Cupertino Public Library",
@@ -18,5 +17,3 @@ Activity = {
     "source": "sjpl.org",
     "last_updated": "2025-06-03"
 }
-
-
