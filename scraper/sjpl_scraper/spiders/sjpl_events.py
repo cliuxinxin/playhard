@@ -42,10 +42,26 @@ class SjplEventsSpider(scrapy.Spider):
     def parse(self, response):
         data = json.loads(response.text)
         entities = data.get('entities', {})
-        locations = {k: v['name'] for k, v in entities.get('locations', {}).items()}
         audiences = {k: v['name'] for k, v in entities.get('eventAudiences', {}).items()}
         event_types = {k: v['name'] for k, v in entities.get('eventTypes', {}).items()}
         languages = {k: v['name'] for k, v in entities.get('eventLanguages', {}).items()}
+        locations_lookup = {}
+        for loc_id, loc_data in entities.get('locations', {}).items():
+            location_name = loc_data.get('name', f"Unknown ID: {loc_id}")
+            address_data = loc_data.get('address', {})
+            address_parts = [
+                address_data.get('number', ''),
+                address_data.get('street', ''),
+                address_data.get('city', ''),
+                address_data.get('state', ''),
+                address_data.get('zip', '')
+            ]
+            full_address = ', '.join(part for part in address_parts if part)
+            locations_lookup[loc_id] = {
+                'name': location_name,
+                'address': full_address
+    }
+
 
         for event_id in data.get('events', {}).get('results', []):
             event_data = entities.get('events', {}).get(event_id)
@@ -57,20 +73,37 @@ class SjplEventsSpider(scrapy.Spider):
             cleaned_description = soup.get_text(separator='\n', strip=True)
 
             location_id = definition.get('branchLocationId')
+            location_details = definition.get('locationDetails', '')
+            location_name = "N/A"
+            address = ""
+
             if event_data.get('isVirtual'):
                 location_name = "Online / Virtual"
-            elif location_id:
-                location_name = locations.get(location_id, f"Unknown ID: {location_id}")
+                full_location = location_name
             else:
-                location_name = "N/A"
+                location_info = locations_lookup.get(str(location_id))
+                if location_info:
+                    location_name = location_info['name']
+                    address = location_info['address']
+                full_location = location_name
+                if location_details:
+                    full_location = f"{location_name}, {location_details}"
+
+
+            # location_details 拼接
+            location_details = definition.get('locationDetails', '')
+            full_location = location_name
+            if location_details:
+                full_location = f"{location_name}, {location_details}"
 
             item = SjplEventItem()
             item['event_id'] = event_id
             item['title'] = definition.get('title', 'N/A')
             item['start_time'] = definition.get('start', 'N/A')
             item['end_time'] = definition.get('end', 'N/A')
-            item['location'] = location_name
-            item['location_details'] = definition.get('locationDetails', '')
+            item['address'] = address
+            item['location'] = full_location
+            item['location_details'] = location_details  # 保持冗余字段原样记录
             item['audiences'] = ', '.join([audiences.get(aid, 'N/A') for aid in definition.get('audienceIds', [])])
             item['event_types'] = ', '.join([event_types.get(tid, 'N/A') for tid in definition.get('typeIds', [])])
             item['languages'] = ', '.join([languages.get(lid, 'N/A') for lid in definition.get('languageIds', [])])

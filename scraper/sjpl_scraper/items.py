@@ -5,6 +5,7 @@ class SjplEventItem(scrapy.Item):
     title = scrapy.Field()
     start_time = scrapy.Field()
     end_time = scrapy.Field()
+    address = scrapy.Field()  # ✅ 新增字段
     location = scrapy.Field()
     location_details = scrapy.Field()
     audiences = scrapy.Field()
