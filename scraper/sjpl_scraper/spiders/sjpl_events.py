@@ -110,11 +110,12 @@ class SjplEventsSpider(scrapy.Spider):
             item['description'] = cleaned_description
             item['link'] = f"https://sjpl.bibliocommons.com/events/{event_id}"
             item['is_cancelled'] = definition.get('isCancelled', False)
+            item['image_url'] = entities['images'][definition['featuredImageId']]['url']
             yield item
 
         pagination = data.get('pagination', {})
         current_page = pagination.get('page')
-        total_pages = pagination.get('pages')
+        total_pages = 10
         if current_page and total_pages and current_page < total_pages:
             next_page = current_page + 1
             next_url = f"https://gateway.bibliocommons.com/v2/libraries/sjpl/events/search?page={next_page}&limit=20&locale=en-US"

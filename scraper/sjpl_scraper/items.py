@@ -13,4 +13,5 @@ class SjplEventItem(scrapy.Item):
     languages = scrapy.Field()
     description = scrapy.Field()
     link = scrapy.Field()
+    image_url = scrapy.Field()
     is_cancelled = scrapy.Field()

@@ -19,6 +19,7 @@ class SQLitePipeline:
                 languages TEXT,
                 description TEXT,
                 link TEXT,
+                image_url TEXT,
                 is_cancelled INTEGER
             )
         ''')
@@ -38,12 +39,12 @@ class SQLitePipeline:
             full_location = f"{full_location}, {item['location_details']}"
 
         self.cursor.execute('''
-            INSERT OR REPLACE INTO events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             item['event_id'], item['title'], item['start_time'], item['end_time'],
             full_location, item['address'], item['location_details'],
             item['audiences'], item['event_types'], item['languages'],
-            item['description'], item['link'], int(item['is_cancelled'])
+            item['description'], item['link'], item['image_url'], int(item['is_cancelled'])
         ))
         self.conn.commit()
         return item
