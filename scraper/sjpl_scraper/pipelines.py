@@ -37,22 +37,11 @@ class SQLitePipeline:
         if item.get('location_details'):
             full_location = f"{full_location}, {item['location_details']}"
 
-        # address 字段拼接格式化
-        address_data = item.get('address') or {}
-        address = ', '.join(filter(None, [
-            address_data.get('number'),
-            address_data.get('street'),
-            address_data.get('city'),
-            address_data.get('state'),
-            address_data.get('zip'),
-            address_data.get('country')
-        ]))
-
         self.cursor.execute('''
             INSERT OR REPLACE INTO events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             item['event_id'], item['title'], item['start_time'], item['end_time'],
-            full_location, address, item['location_details'],
+            full_location, item['address'], item['location_details'],
             item['audiences'], item['event_types'], item['languages'],
             item['description'], item['link'], int(item['is_cancelled'])
         ))
