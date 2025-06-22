@@ -1,0 +1,6 @@
+import json
+import os
+
+def load_task_config(task_file: str):
+    with open(os.path.join("configs", task_file)) as f:
+        return json.load(f)

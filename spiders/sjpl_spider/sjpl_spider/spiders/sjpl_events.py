@@ -1,7 +1,7 @@
 import scrapy
 import json
 from bs4 import BeautifulSoup
-from sjpl_scraper.items import SjplEventItem
+from ..items import SjplEventItem
 
 class SjplEventsSpider(scrapy.Spider):
     name = "sjpl_events"
